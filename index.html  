@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Добро пожаловать</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="start-screen">
+  <div class="container">
+    <img src="assets/hero.jpg" alt="Главное фото" class="hero">
+    <h1>Добро пожаловать в магазин</h1>
+    <button class="btn-primary" onclick="window.location.href='shop.html'"> Выбрать товары</button>
+  </div>
+</body>
+</html>

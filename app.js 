@@ -1,0 +1,48 @@
+// Массив товаров
+const products = [
+  { id: 1, name: "МАК по архетипам", price: 1500, img: "assets/mac.jpg" },
+  { id: 2, name: "Игра Архевселенная", price: 2500, img: "assets/archgame.jpg" },
+  { id: 3, name: "МАК Ресурс", price: 1200, img: "assets/resource.jpg" },
+  { id: 4, name: "Дневник практик", price: 900, img: "assets/diary.jpg" },
+];
+
+// Показ списка товаров
+if (document.getElementById("products")) {
+  const container = document.getElementById("products");
+  container.innerHTML = products.map(p => `
+    <div class="card">
+      <img src="${p.img}" alt="${p.name}">
+      <h3>${p.name}</h3>
+      <p>${p.price} ₽</p>
+      <button onclick="addToCart(${p.id})">Добавить</button>
+    </div>
+  `).join('');
+}
+
+// Корзина
+function addToCart(id) {
+  const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+  const product = products.find(p => p.id === id);
+  cart.push(product);
+  localStorage.setItem('cart', JSON.stringify(cart));
+  alert(`${product.name} добавлен в корзину`);
+}
+
+// Страница корзины
+if (document.getElementById("cart")) {
+  const cartItems = JSON.parse(localStorage.getItem('cart') || '[]');
+  const container = document.getElementById("cart");
+  if (cartItems.length === 0) {
+    container.innerHTML = "<p>Корзина пуста</p>";
+  } else {
+    container.innerHTML = cartItems.map(p => `
+      <div class="cart-item">
+        <img src="${p.img}" alt="${p.name}">
+        <div>
+          <h3>${p.name}</h3>
+          <p>${p.price} ₽</p>
+        </div>
+      </div>
+    `).join('');
+  }
+}
