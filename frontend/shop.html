@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Выбор товаров</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #fefcfb;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .products {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+      background: white;
+    }
+    .card img {
+      width: 100%;
+      border-radius: 10px;
+    }
+    .card button {
+      margin-top: 10px;
+      background: #8b5cf6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Выбери товар</h1>
+  <div class="products">
+    <div class="card">
+      <img src="mac.jpg" alt="МАК по архетипам" />
+      <p>МАК по архетипам</p>
+      <p>Цена: 500₽</p>
+      <button onclick="addToCart('МАК по архетипам', 500)">Добавить</button>
+    </div>
+    <div class="card">
+      <img src="archgame.jpg" alt="Игра Архевселенная" />
+      <p>Игра Архевселенная</p>
+      <p>Цена: 800₽</p>
+      <button onclick="addToCart('Игра Архевселенная', 800)">Добавить</button>
+    </div>
+    <div class="card">
+      <img src="resource.jpg" alt="МАК Ресурс" />
+      <p>МАК Ресурс</p>
+      <p>Цена: 400₽</p>
+      <button onclick="addToCart('МАК Ресурс', 400)">Добавить</button>
+    </div>
+    <div class="card">
+      <img src="diary.jpg" alt="Дневник практик" />
+      <p>Дневник практик</p>
+      <p>Цена: 600₽</p>
+      <button onclick="addToCart('Дневник практик', 600)">Добавить</button>
+    </div>
+  </div>
+
+  <script>
+    function addToCart(product, price) {
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      cart.push({ product, price });
+      localStorage.setItem('cart', JSON.stringify(cart));
+      window.location.href = 'cart.html';
+    }
+  </script>
+</body>
+</html>
