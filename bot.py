@@ -10,7 +10,7 @@ import os
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = "8286119515:AAF7uT66t_8UEzbAMKyfFvXhXEcGxSmtScc"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # ====== ЭТАП 1 — СТАРТ ======
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
