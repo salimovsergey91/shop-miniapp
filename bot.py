@@ -42,7 +42,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("Получить уникальную практику", callback_data="practice")],
     ]
 
-    photo_path = "assets/hello.jpg"
+    photo_path = "assets/welcome.jpg"
 
     sent = await update.effective_chat.send_photo(
         photo=open(photo_path, "rb"),
