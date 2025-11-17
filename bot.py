@@ -11,11 +11,10 @@ from telegram.ext import (
     CallbackQueryHandler,
     ContextTypes,
 )
-
-BOT_TOKEN = os.getenv("8286119515:AAF7uT66t_8UEzbAMKyfFvXhXEcGxSmtScc")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 async def clear_prev(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Удаляем предыдущее сообщение БОТА
+
     if context.user_data.get("last_bot_message"):
         try:
             await context.user_data["last_bot_message"].delete()
