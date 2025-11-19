@@ -1,20 +1,24 @@
 import os
 import random
+from aiohttp import web
 from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
 )
 from telegram.ext import (
-    ApplicationBuilder,
+    Application,
     CommandHandler,
     CallbackQueryHandler,
     ContextTypes,
 )
+from telegram.ext import ApplicationBuilder
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL")  # Render сам генерирует https URL
 
+# ---------- ТВОЙ КОД ОСТАЕТСЯ ----------
 async def clear_prev(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     if context.user_data.get("last_bot_message"):
         try:
             await context.user_data["last_bot_message"].delete()
@@ -31,6 +35,7 @@ async def clear_prev(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.delete()
         except:
             pass
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -55,6 +60,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     context.user_data["last_bot_message"] = sent
+
 
 async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -106,14 +112,45 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "menu":
         await start(update, context)
 
-def main():
+
+# ---------- САМАЯ ВАЖНАЯ ЧАСТЬ: WEBHOOK ----------
+async def handle(request):
+    data = await request.json()
+    update = Update.de_json(data, request.app["bot"])
+    await request.app["application"].process_update(update)
+    return web.Response(status=200)
+
+
+async def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(buttons))
 
-    print("Бот запущен!")
-    app.run_polling()
+    # Telegram webhook setup
+    await app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
+
+    # Web server (Render requires port)
+    server = web.Application()
+    server["bot"] = app.bot
+    server["application"] = app
+    server.router.add_post("/webhook", handle)
+
+    runner = web.AppRunner(server)
+    await runner.setup()
+    port = int(os.getenv("PORT", 8080))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+
+    print(f"Бот запущен на порту {port}. Webhook = {WEBHOOK_URL}/webhook")
+
+    await site.start()
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()  # чтобы бот не засыпал
+
+    await app.updater.idle()
+
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
