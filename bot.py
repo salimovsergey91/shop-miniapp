@@ -1,11 +1,6 @@
 import os
-import asyncio
-from aiohttp import web
-from telegram import (
-    Update,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-)
+import random
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -14,132 +9,119 @@ from telegram.ext import (
 )
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL")
+FOUNDER_URL = "https://t.me/karinamokk"
+
+CARDS_DIR = "assets/cards"
+
+QUESTIONS = [
+    ("Как ты сейчас чувствуешь себя эмоционально?",
+     ["Спокойно", "Тревожно", "Устало", "Раздражённо"]),
+    ("Что сейчас беспокоит больше всего?",
+     ["Отношения", "Деньги", "Самооценка", "Будущее"]),
+    ("Как ты спишь в последнее время?",
+     ["Хорошо", "Плохо", "Бессонница", "Поверхностно"]),
+    ("Есть ли ощущение, что ты застрял(а)?",
+     ["Да", "Иногда", "Нет"]),
+    ("Чего хочется больше всего?",
+     ["Спокойствия", "Уверенности", "Поддержки", "Ясности"]),
+]
 
 
-# ---------- УДАЛЕНИЕ ПРЕДЫДУЩИХ СООБЩЕНИЙ ----------
-async def clear_prev(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Удаляем последнее сообщение бота
-    last = context.user_data.get("last_bot_message")
-    if last:
-        try:
-            await last.delete()
-        except:
-            pass
-
-    # Удаляем сообщение-команду или callback-сообщение
-    try:
-        if update.callback_query:
-            await update.callback_query.message.delete()
-        elif update.message:
-            await update.message.delete()
-    except:
-        pass
+# ---------- МЕНЮ ----------
+def menu_keyboard():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🎧 Послушать практику", callback_data="meditations")],
+        [InlineKeyboardButton("🧠 Пройти диагностику состояния", callback_data="diagnostic")],
+        [InlineKeyboardButton("🔮 Вытянуть карту дня", callback_data="card_day")],
+        [InlineKeyboardButton("💬 Записаться на консультацию", url=FOUNDER_URL)],
+    ])
 
 
 # ---------- /START ----------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await clear_prev(update, context)
+    context.user_data.clear()
 
-    keyboard = [
-        [InlineKeyboardButton("Послушать медитацию", callback_data="med")],
-        [InlineKeyboardButton("Получить уникальную практику", callback_data="practice")],
-        [InlineKeyboardButton("Записаться на консультацию", url="https://t.me/karinamokk")]
-    ]
+    with open("assets/welcome.mp4", "rb") as video:
+        await update.message.reply_video_note(video)
 
-    photo_path = "assets/welcome.jpg"
-
-    with open(photo_path, 'rb') as f:
-        sent = await update.effective_chat.send_photo(
-            photo=f,
-            caption=(
-                "Рада, что ты с нами! \n\n"
-                "Меня зовут Карина — психолог, автор Т-игр, МАК и дневников практик.\n\n"
-                "Выбери, что ты хочешь сегодня:"
-            ),
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-
-    context.user_data["last_bot_message"] = sent
+    await update.message.reply_text(
+        "Рада тебе 💛\nВыбери, с чего хочешь начать:",
+        reply_markup=menu_keyboard()
+    )
 
 
-# ---------- ОБРАБОТКА КНОПОК ----------
+# ---------- КНОПКИ ----------
 async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    await clear_prev(update, context)
+    data = query.data
 
-    if query.data == "med":
-        sent = await query.message.chat.send_message(
-            "Выбери медитацию:",
+    if data == "meditations":
+        await query.message.reply_text(
+            "Выбери практику:",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Исполнение желаний", url="https://vkvideo.ru/video-113948441_456239058")],
-                [InlineKeyboardButton("Уверенность в себе", url="https://vkvideo.ru/video-113948441_456239057")],
-                [InlineKeyboardButton("Прощение себя", url="https://vkvideo.ru/video-113948441_456239052")],
-                [InlineKeyboardButton("Назад", callback_data="menu")]
+                [InlineKeyboardButton("✨ Исполнение желаний", url="https://vkvideo.ru/video-113948441_456239058")],
+                [InlineKeyboardButton("💪 Уверенность в себе", url="https://vkvideo.ru/video-113948441_456239057")],
+                [InlineKeyboardButton("🌿 Прощение себя", url="https://vkvideo.ru/video-113948441_456239052")],
             ])
         )
-        context.user_data["last_bot_message"] = sent
 
-    elif query.data == "practice":
-        sent = await query.message.chat.send_message(
-            "Стоимость уникальной практики — 1000 рублей.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Получить практику — 1000 ₽", url="https://vkvideo.ru/@km.psygame")],
-                [InlineKeyboardButton("Назад", callback_data="menu")]
-            ])
-        )
-        context.user_data["last_bot_message"] = sent
+    elif data == "diagnostic":
+        context.user_data["step"] = 0
+        await send_question(query, context)
 
-    elif query.data == "menu":
-        await start(update.callback_query, context)
+    elif data.startswith("ans_"):
+        context.user_data["step"] += 1
+        if context.user_data["step"] < len(QUESTIONS):
+            await send_question(query, context)
+        else:
+            await diagnostic_result(query)
+
+    elif data == "card_day":
+        cards = os.listdir(CARDS_DIR)
+        card = random.choice(cards)
+        with open(os.path.join(CARDS_DIR, card), "rb") as img:
+            await query.message.reply_photo(
+                img,
+                caption="Это твоя карта дня.\nПодумай, что она может означать для тебя ✨"
+            )
 
 
-# ---------- WEBHOOK-HANDLER ----------
-async def handle(request):
-    data = await request.json()
+# ---------- ВОПРОС ----------
+async def send_question(query, context):
+    step = context.user_data["step"]
+    text, answers = QUESTIONS[step]
 
-    application = request.app["application"]
-    bot = application.bot
+    keyboard = [
+        [InlineKeyboardButton(a, callback_data=f"ans_{a}")]
+        for a in answers
+    ]
 
-    update = Update.de_json(data, bot)
+    await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
-    await application.process_update(update)
-    return web.Response(text="ok")
+
+# ---------- РЕЗУЛЬТАТ ----------
+async def diagnostic_result(query):
+    with open("assets/diag_result.mp4", "rb") as video:
+        await query.message.reply_video_note(video)
+
+    await query.message.reply_text(
+        "Спасибо за ответы 💛\n"
+        "Если хочешь глубже разобрать своё состояние — записывайся на консультацию.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("💬 Записаться на консультацию", url=FOUNDER_URL)]
+        ])
+    )
 
 
 # ---------- MAIN ----------
-async def main():
+def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(buttons))
-
-    # Проверка наличия URL
-    if not WEBHOOK_URL:
-        raise RuntimeError("ENV RENDER_EXTERNAL_URL не задан!")
-
-    await app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
-
-    server = web.Application()
-    server["application"] = app
-    server.router.add_post("/webhook", handle)
-
-    await app.initialize()
-    await app.start()
-
-    runner = web.AppRunner(server)
-    await runner.setup()
-    port = int(os.environ.get("PORT", 8080))
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-
-    print(f"Бот запущен. Webhook = {WEBHOOK_URL}/webhook")
-
-    while True:
-        await asyncio.sleep(3600)
+    app.run_polling()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
